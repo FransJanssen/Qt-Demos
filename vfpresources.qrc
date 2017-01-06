@@ -1,0 +1,10 @@
+<RCC>
+    <qresource prefix="/root">
+        <file>Images/receive-icon.png</file>
+        <file>Images/send-icon.png</file>
+        <file>Images/Syncor48.png</file>
+        <file>Images/disconnect-icon.png</file>
+        <file>Images/connect-icon.png</file>
+        <file>Images/clear-icon.jpeg</file>
+    </qresource>
+</RCC>
