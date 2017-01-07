@@ -7,4 +7,7 @@
         <file>Images/connect-icon.png</file>
         <file>Images/clear-icon.jpeg</file>
     </qresource>
+    <qresource prefix="/json">
+        <file>settings.json</file>
+    </qresource>
 </RCC>
