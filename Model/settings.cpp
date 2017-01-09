@@ -7,6 +7,7 @@
 #include <QJsonObject>
 #include <QJsonParseError>
 #include <QMessageBox>
+#include <QStandardPaths>
 #include <QString>
 #include <QStringListModel>
 
@@ -46,10 +47,75 @@ namespace Ps
         m_appShortName = json_obj["appShortName"].toString();
         m_hostName = json_obj["hostName"].toString();
         m_portNumber = json_obj["port"].toInt();
-        m_waitMs = json_obj["tcpLongWaitMs"].toInt();
-        m_readWaitMs = json_obj["tcpShortWaitMs"].toInt();
+        m_longWaitMs = json_obj["tcpLongWaitMs"].toInt();
+        m_shotWaitMs = json_obj["tcpShortWaitMs"].toInt();
 
         SetupCommands(json_obj);
+    }
+
+    QString Settings::applicationName() const
+    {
+        return m_applicationName;
+    }
+
+    void Settings::setApplicationName(const QString &applicationName)
+    {
+        m_applicationName = applicationName;
+    }
+
+    QString Settings::appShortName() const
+    {
+        return m_appShortName;
+    }
+
+    void Settings::setAppShortName(const QString &appShortName)
+    {
+        m_appShortName = appShortName;
+    }
+
+    QString Settings::hostName() const
+    {
+        return m_hostName;
+    }
+
+    void Settings::setHostName(const QString &hostName)
+    {
+        m_hostName = hostName;
+    }
+
+    quint16 Settings::portNumber() const
+    {
+        return m_portNumber;
+    }
+
+    void Settings::setPortNumber(const quint16 &portNumber)
+    {
+        m_portNumber = portNumber;
+    }
+
+    int Settings::waitMs() const
+    {
+        return m_longWaitMs;
+    }
+
+    void Settings::setWaitMs(int waitMs)
+    {
+        m_longWaitMs = waitMs;
+    }
+
+    int Settings::readWaitMs() const
+    {
+        return m_shotWaitMs;
+    }
+
+    void Settings::setReadWaitMs(int readWaitMs)
+    {
+        m_shotWaitMs = readWaitMs;
+    }
+
+    QStringListModel &Settings::modelCommands() const
+    {
+        return m_modelCommands;
     }
 
     JsonObjErrorPair Settings::GetJsonObject(const QString& rawJson)
@@ -61,11 +127,45 @@ namespace Ps
         return std::make_pair(json_obj, json_parse_error);
     }
 
+    QDir Settings::OpenConfigDirectory()
+    {
+        QDir config_dir(QStandardPaths::writableLocation((QStandardPaths::ConfigLocation)));
+
+        if(!config_dir.exists())
+        {
+            QDir dir;
+            dir.mkpath(config_dir.path()); // Creates all needed folders in the path
+        }
+
+        return config_dir;
+    }
+
     QString Settings::ReadJsonFile()
     {
         auto default_settings = ReadJsonFromInternalResource();
+        QDir config_dir = OpenConfigDirectory();
+        auto path = config_dir.filePath(m_filename);
+        QFile std_file(path);
 
-        return default_settings;
+        if (std_file.exists())
+        {
+            if (!std_file.open(QFile::ReadOnly | QFile::Text))
+            {
+                SendErrorMessage("Could not open " + path);
+                return default_settings;
+            }
+
+            QString settings = std_file.readAll();
+            std_file.close();
+
+            return settings;
+        }
+        else
+        {
+            WriteDefaultsToStdConfigFile(std_file, default_settings);
+
+            return default_settings;
+        }
     }
 
     QString Settings::ReadJsonFromInternalResource()
@@ -104,6 +204,7 @@ namespace Ps
         {
             cmd_list.append(item.toString());
         }
+
         m_modelCommands.setStringList(cmd_list);
     }
 
@@ -117,5 +218,29 @@ namespace Ps
     void Settings::SendErrorMessage(const QString& msg)
     {
         emit NotifyStatusMessage(msg);
+    }
+
+    void Settings::WriteDefaultsToStdConfigFile(QFile& stdConfigFile, const QString &settings)
+    {
+        int length = settings.length();
+
+        if (stdConfigFile.open(QFile::WriteOnly | QFile::Text)) // Creates the file if it doesn't exist
+        {
+            SendErrorMessage("Could not open file to write - " + stdConfigFile.fileName());
+        }
+
+        auto bytes_written = stdConfigFile.write(qPrintable(settings), length);
+
+        if (bytes_written != length)
+        {
+            SendErrorMessage("Could not write the settings to - " + stdConfigFile.fileName());
+
+            if (!stdConfigFile.remove())
+            {
+                SendErrorMessage("Could not remove configuration file. Please delete manually - " + stdConfigFile.fileName());
+            }
+        }
+
+        stdConfigFile.close();
     }
 }
